@@ -115,8 +115,8 @@ export const userLoginController = asyncErrorHandle(async (req, res, next) => {
 
     //response
 
-    res
-        .status(200)
+
+    res.status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
         .json({
@@ -131,4 +131,154 @@ export const userLoginController = asyncErrorHandle(async (req, res, next) => {
 
 
 
+//user logout
+export const userLogoutController = asyncErrorHandle(async (req, res, next) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: {
+                refreshToken: 1, // this removes the field from document
+            },
+        },
+        {
+            new: true,
+        }
+    );
 
+    const options = {
+        httpOnly: true,
+        secure: true,
+    };
+
+
+    res.status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json({
+            status: "success",
+            message: "Logout successfully",
+        });
+});
+
+export const setNewRefreshTokens = asyncErrorHandle(async (req, res, next) => {
+
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+
+    if (!incomingRefreshToken) {
+        const error = new customError("Unauthrized request", 401);
+        next(error);
+    }
+
+    const decodedToken = jwt.verify(
+        incomingRefreshToken,
+        process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const user = await User.findById(decodedToken?._id);
+
+    if (!user) {
+        const error = new customError("invalid refresh Token", 401);
+        next(error);
+    }
+
+    if (incomingRefreshToken !== user?.refreshToken) {
+        const error = new customError("refresh token is expired or used", 401);
+        next(error);
+    }
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    };
+    const { accessToken, refreshToken } = await generateAccessAndRefereshToken(
+        user._id
+    );
+
+
+
+    const currentUser = await User.findById(user._id);
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json({
+            status: "success",
+            data: {
+                user: currentUser,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+            },
+        });
+});
+
+
+export const changeCurrentPassword = asyncErrorHandle(async (req, res, next) => {
+
+    const { oldPassword, newPassword } = req.body
+
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        next(new customError("Invalid old password", 400));
+    }
+
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
+
+    res.status(200).json({
+        status: "success",
+        data: {
+            message: "password change successfully",
+        },
+    });
+})
+
+
+export const getProfile = asyncErrorHandle(async (req, res, next) => {
+
+    res.status(200)
+        .json({
+            status: "success",
+            data: {
+                user: req.user,
+                message: "Profile Details fetched successfully"
+            }
+        }
+        )
+})
+
+export const updateAccountDetails = asyncErrorHandle(async (req, res, next) => {
+    const { name, email } = req.body
+
+    const currentUser = await User.findById(req.user?._id);
+
+    if (currentUser) {
+        currentUser.name = name || currentUser.name;
+        currentUser.email = email || currentUser.email;
+
+        const updatedUser = await currentUser.save();
+
+
+        res.status(200)
+            .json({
+                status: "success",
+                data: {
+                    user: updatedUser,
+                    message: "Account details updated successfully"
+                }
+
+            })
+
+    }
+    else {
+        next(new customError("something went wrong,try again"));
+    }
+
+
+
+
+
+});

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import validator from "validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -32,6 +32,13 @@ const userSchema = mongoose.Schema({
     refreshToken: {
         type: String,
     },
+
+    tasks: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Task"
+        }
+    ],
 
     date: {
         type: Date,
