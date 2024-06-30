@@ -1,4 +1,4 @@
-import User from "../models/user.model.js";
+import User from "../models/userModel.js";
 import asyncErrorHandle from "../utils/asyncError.js";
 import customError from "../utils/customError.js";
 import jwt from 'jsonwebtoken';
@@ -33,13 +33,13 @@ export const userRegisterController = asyncErrorHandle(
         const { name, email, password } = req.body;
 
 
-
         //save database
         const newUser = await User.create({
             name,
             email,
             password
         });
+
 
         const { accessToken, refreshToken } = await generateAccessAndRefereshToken(
             newUser._id
@@ -49,6 +49,9 @@ export const userRegisterController = asyncErrorHandle(
         const loggedInUser = await User.findById(newUser._id).select(
             "-password -refreshToken"
         );
+
+
+
 
         //cookies options
         const options = {
@@ -73,4 +76,9 @@ export const userRegisterController = asyncErrorHandle(
 
     }
 );
+
+
+
+
+
 
