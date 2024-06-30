@@ -27,6 +27,7 @@ app.use(cookieParser())
 app.use("/api/v1/user", userRoute);
 
 
+
 //Invalid  Routes Error handles
 app.all("*", (req, res, next) => {
     const error = new customError(

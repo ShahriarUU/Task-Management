@@ -78,6 +78,56 @@ export const userRegisterController = asyncErrorHandle(
 );
 
 
+export const userLoginController = asyncErrorHandle(async (req, res, next) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        next(new customError("All fileds are requied", 400));
+    }
+
+    const currentUser = await User.findOne({ email });
+
+    if (!currentUser) {
+        next(new customError("User are not registed", 400));
+    }
+
+    const isPasswordValid = await currentUser.isPasswordCorrect(password);
+
+    if (!isPasswordValid) {
+        next(new customError("invalid credentials", 400));
+    }
+
+    //genetate accessToken and refresh Token
+
+    const { accessToken, refreshToken } = await generateAccessAndRefereshToken(
+        currentUser._id
+    );
+
+    //update user after generated tokens
+    const loggedInUser = await User.findById(currentUser._id).select(
+        "-password -refreshToken"
+    );
+
+    //cookies options
+    const options = {
+        httpOnly: true,
+        secure: true,
+    };
+
+    //response
+
+    res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json({
+            status: "success",
+            data: {
+                user: loggedInUser,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+            },
+        });
+});
 
 
 
